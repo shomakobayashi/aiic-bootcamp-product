@@ -30,7 +30,7 @@ export class AiicBootcampProductStack extends Stack {
     /**
      * API Gateway の作成
      */
-    const apiGateway = new ApiGatewayConstruct(this, 'ApiGateway', {
+    new ApiGatewayConstruct(this, 'ApiGateway', {
       lambdaFunction: lambdaFunction.function,
       apiName: 'AIIC Bootcamp API',
       stageName: 'vv1',

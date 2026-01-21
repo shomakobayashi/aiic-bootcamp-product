@@ -42,7 +42,20 @@ export default function HomePage() {
 
   return (
     <main>
-      <h1 style={{ fontSize: '28px', marginBottom: '20px' }}>おすすめ商品</h1>
+      <div style={{
+        background: 'linear-gradient(135deg, #1A1A1A 0%, #2C2C2C 100%)',
+        padding: '40px 20px',
+        marginBottom: '30px',
+        borderRadius: '8px',
+        color: 'white'
+      }}>
+        <h1 style={{ fontSize: '32px', marginBottom: '12px' }}>🚗 車用品専門通販サイト</h1>
+        <p style={{ fontSize: '18px', opacity: 0.9 }}>タイヤ、オイル、カスタムパーツなど豊富な品揃え</p>
+      </div>
+
+      <h2 style={{ fontSize: '24px', marginBottom: '20px', borderLeft: '4px solid var(--amazon-orange)', paddingLeft: '12px' }}>
+        おすすめ商品
+      </h2>
 
       {products.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-secondary)' }}>

@@ -20,13 +20,13 @@ export default function Header({ cartCount = 0, onSearch }: HeaderProps) {
     <header>
       <div className="header-top">
         <Link to="/" className="logo">
-          🛒 EC Site
+          🚗 AutoParts Shop
         </Link>
 
         <form className="search-bar" onSubmit={handleSearch}>
           <input
             type="text"
-            placeholder="商品を検索"
+            placeholder="車用品を検索（タイヤ、オイル、カスタムパーツなど）"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -45,11 +45,13 @@ export default function Header({ cartCount = 0, onSearch }: HeaderProps) {
       </div>
 
       <div className="header-sub">
-        <Link to="/category/Electronics">家電</Link>
-        <Link to="/category/Books">本</Link>
-        <Link to="/category/Fashion">ファッション</Link>
-        <Link to="/category/Food">食品</Link>
-        <Link to="/category/Sports">スポーツ</Link>
+        <Link to="/category/Tires">タイヤ・ホイール</Link>
+        <Link to="/category/Oil">オイル・ケミカル</Link>
+        <Link to="/category/Interior">内装パーツ</Link>
+        <Link to="/category/Exterior">外装パーツ</Link>
+        <Link to="/category/Electronics">電装品</Link>
+        <Link to="/category/Maintenance">メンテナンス</Link>
+        <Link to="/category/Accessories">アクセサリー</Link>
       </div>
     </header>
   );

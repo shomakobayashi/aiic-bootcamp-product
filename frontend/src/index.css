@@ -5,31 +5,35 @@
 }
 
 :root {
-  --amazon-orange: #FF9900;
-  --amazon-dark: #131921;
-  --amazon-light: #232F3E;
-  --amazon-blue: #007185;
-  --amazon-hover: #C45500;
+  /* 車用品専門店カラー */
+  --amazon-orange: #DC143C;
+  --amazon-dark: #1A1A1A;
+  --amazon-light: #2C2C2C;
+  --amazon-blue: #0066CC;
+  --amazon-hover: #B80F1F;
   --text-primary: #0F1111;
   --text-secondary: #565959;
   --border-color: #D5D9D9;
-  --bg-gray: #F7F8F8;
+  --bg-gray: #F5F5F5;
   --bg-white: #FFFFFF;
   --star-color: #FFA41C;
+  --racing-yellow: #FFD700;
+  --performance-green: #00C853;
 }
 
 body {
-  font-family: "Amazon Ember", Arial, sans-serif;
+  font-family: "Roboto", "Noto Sans JP", Arial, sans-serif;
   color: var(--text-primary);
   background-color: var(--bg-white);
   line-height: 1.5;
 }
 
-/* Amazon風ヘッダー */
+/* 車用品専門店ヘッダー */
 header {
   background-color: var(--amazon-dark);
   color: white;
   padding: 0;
+  border-bottom: 3px solid var(--amazon-orange);
 }
 
 .header-top {

@@ -43,8 +43,7 @@ export class AiicBootcampProductStack extends Stack {
      * Bedrock Agent の作成
      */
     const bedrockAgent = new BedrockAgentConstruct(this, 'BedrockAgent', {
-      agentName: 'aws-operations-agent',
-      repositoryName: 'bedrock-agentcore-agent',
+      agentName: 'aws_operations_agent',
       region: 'ap-northeast-1',
       removalPolicy: RemovalPolicy.DESTROY, // 開発用設定（本番では変更してください）
     });

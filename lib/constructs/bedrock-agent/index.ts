@@ -46,7 +46,7 @@ export class BedrockAgentConstruct extends Construct {
   constructor(scope: Construct, id: string, props: BedrockAgentConstructProps = {}) {
     super(scope, id);
 
-    const agentName = props.agentName || 'aws-operations-agent';
+    const agentName = props.agentName || 'aws_operations_agent';
     const region = props.region || 'us-east-1';
     const modelId = props.modelId || 'us.anthropic.claude-sonnet-4-20250514-v1:0';
     const agentSourcePath = props.agentSourcePath || path.join(__dirname, '../../../agent');

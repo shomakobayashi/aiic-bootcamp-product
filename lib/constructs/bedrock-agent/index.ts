@@ -73,19 +73,23 @@ export class BedrockAgentConstruct extends Construct {
     this.executionRole = this.runtime.role;
 
     // Bedrock モデル呼び出し権限を追加
+    const accountId = Stack.of(this).account;
     this.runtime.addToRolePolicy(
       new iam.PolicyStatement({
-        sid: 'BedrockInvokeModel',
+        sid: 'BedrockModelInvocation',
         effect: iam.Effect.ALLOW,
         actions: [
           'bedrock:InvokeModel',
           'bedrock:InvokeModelWithResponseStream',
+          'bedrock:ApplyGuardrail',
         ],
         resources: [
-          // Cross-Region Inference Profile用
-          `arn:aws:bedrock:${region}:*:inference-profile/${modelId}`,
-          // 通常のFoundation Model用（フォールバック）
-          `arn:aws:bedrock:${region}::foundation-model/*`,
+          // 全リージョンのFoundation Model
+          'arn:aws:bedrock:*::foundation-model/*',
+          // 全リージョンのInference Profile
+          'arn:aws:bedrock:*:*:inference-profile/*',
+          // アカウント固有のBedrockリソース
+          `arn:aws:bedrock:${region}:${accountId}:*`,
         ],
       })
     );

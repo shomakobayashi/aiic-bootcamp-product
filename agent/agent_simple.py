@@ -7,7 +7,7 @@ from strands.models import BedrockModel
 from strands.tools import tool
 
 from tools.lambda_tool import invoke_lambda, get_lambda_code, list_lambdas
-from tools.dynamodb_tool import create_item, read_item, update_item, delete_item, query_items
+from tools.dynamodb_tool import create_item, read_item, update_item, query_items
 from tools.apigateway_tool import execute_api
 
 logging.basicConfig(level=logging.INFO)
@@ -67,7 +67,7 @@ def run_agent(payload):
     
     custom_tools = [
         lambda_invoke, lambda_get_code, lambda_list,
-        dynamodb_create, dynamodb_read, dynamodb_update, dynamodb_delete, dynamodb_query,
+        dynamodb_create, dynamodb_read, dynamodb_update, dynamodb_query,
         api_execute
     ]
     

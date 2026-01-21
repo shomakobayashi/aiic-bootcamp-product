@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 app = BedrockAgentCoreApp()
 
 bedrock_model = BedrockModel(
-    model_id="us.anthropic.claude-sonnet-4-20250514-v1:0",
+    model_id="global.anthropic.claude-sonnet-4-20250514-v1:0",
     temperature=0.7,
 )
 

@@ -72,8 +72,174 @@ export class BedrockAgentConstruct extends Construct {
     // 実行ロールを取得
     this.executionRole = this.runtime.role;
 
-    // Bedrock モデル呼び出し権限を追加
     const accountId = Stack.of(this).account;
+    const ecrRepoName = `bedrock-agentcore-${agentName}`;
+
+    // ECR イメージアクセス権限
+    this.runtime.addToRolePolicy(
+      new iam.PolicyStatement({
+        sid: 'ECRImageAccess',
+        effect: iam.Effect.ALLOW,
+        actions: [
+          'ecr:BatchGetImage',
+          'ecr:GetDownloadUrlForLayer',
+        ],
+        resources: [
+          `arn:aws:ecr:${region}:${accountId}:repository/${ecrRepoName}`,
+        ],
+      })
+    );
+
+    // ECR トークンアクセス権限
+    this.runtime.addToRolePolicy(
+      new iam.PolicyStatement({
+        sid: 'ECRTokenAccess',
+        effect: iam.Effect.ALLOW,
+        actions: [
+          'ecr:GetAuthorizationToken',
+        ],
+        resources: ['*'],
+      })
+    );
+
+    // CloudWatch Logs 権限 (DescribeLogStreams, CreateLogGroup)
+    this.runtime.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: [
+          'logs:DescribeLogStreams',
+          'logs:CreateLogGroup',
+        ],
+        resources: [
+          `arn:aws:logs:${region}:${accountId}:log-group:/aws/bedrock-agentcore/runtimes/*`,
+        ],
+      })
+    );
+
+    // CloudWatch Logs 権限 (DescribeLogGroups)
+    this.runtime.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: [
+          'logs:DescribeLogGroups',
+        ],
+        resources: [
+          `arn:aws:logs:${region}:${accountId}:log-group:*`,
+        ],
+      })
+    );
+
+    // CloudWatch Logs 権限 (CreateLogStream, PutLogEvents)
+    this.runtime.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: [
+          'logs:CreateLogStream',
+          'logs:PutLogEvents',
+        ],
+        resources: [
+          `arn:aws:logs:${region}:${accountId}:log-group:/aws/bedrock-agentcore/runtimes/*:log-stream:*`,
+        ],
+      })
+    );
+
+    // CloudWatch Logs 権限 (広範囲)
+    this.runtime.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: [
+          'logs:CreateLogGroup',
+          'logs:PutDeliverySource',
+          'logs:PutDeliveryDestination',
+          'logs:CreateDelivery',
+          'logs:GetDeliverySource',
+          'logs:DeleteDeliverySource',
+          'logs:DeleteDeliveryDestination',
+        ],
+        resources: ['*'],
+      })
+    );
+
+    // X-Ray 権限
+    this.runtime.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: [
+          'xray:PutTraceSegments',
+          'xray:PutTelemetryRecords',
+          'xray:GetSamplingRules',
+          'xray:GetSamplingTargets',
+        ],
+        resources: ['*'],
+      })
+    );
+
+    // CloudWatch Metrics 権限 (条件付き)
+    this.runtime.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: [
+          'cloudwatch:PutMetricData',
+        ],
+        resources: ['*'],
+        conditions: {
+          StringEquals: {
+            'cloudwatch:namespace': 'bedrock-agentcore',
+          },
+        },
+      })
+    );
+
+    // Bedrock Agent Core Identity - GetResourceApiKey
+    this.runtime.addToRolePolicy(
+      new iam.PolicyStatement({
+        sid: 'BedrockAgentCoreIdentityGetResourceApiKey',
+        effect: iam.Effect.ALLOW,
+        actions: [
+          'bedrock-agentcore:GetResourceApiKey',
+        ],
+        resources: [
+          `arn:aws:bedrock-agentcore:${region}:${accountId}:token-vault/default`,
+          `arn:aws:bedrock-agentcore:${region}:${accountId}:token-vault/default/apikeycredentialprovider/*`,
+          `arn:aws:bedrock-agentcore:${region}:${accountId}:workload-identity-directory/default`,
+          `arn:aws:bedrock-agentcore:${region}:${accountId}:workload-identity-directory/default/workload-identity/*`,
+        ],
+      })
+    );
+
+    // Secrets Manager 権限 (Credential Provider Client Secret)
+    this.runtime.addToRolePolicy(
+      new iam.PolicyStatement({
+        sid: 'BedrockAgentCoreIdentityGetCredentialProviderClientSecret',
+        effect: iam.Effect.ALLOW,
+        actions: [
+          'secretsmanager:GetSecretValue',
+        ],
+        resources: [
+          `arn:aws:secretsmanager:${region}:${accountId}:secret:bedrock-agentcore-identity!default/oauth2/*`,
+          `arn:aws:secretsmanager:${region}:${accountId}:secret:bedrock-agentcore-identity!default/apikey/*`,
+        ],
+      })
+    );
+
+    // Bedrock Agent Core Identity - GetResourceOauth2Token
+    this.runtime.addToRolePolicy(
+      new iam.PolicyStatement({
+        sid: 'BedrockAgentCoreIdentityGetResourceOauth2Token',
+        effect: iam.Effect.ALLOW,
+        actions: [
+          'bedrock-agentcore:GetResourceOauth2Token',
+        ],
+        resources: [
+          `arn:aws:bedrock-agentcore:${region}:${accountId}:token-vault/default`,
+          `arn:aws:bedrock-agentcore:${region}:${accountId}:token-vault/default/oauth2credentialprovider/*`,
+          `arn:aws:bedrock-agentcore:${region}:${accountId}:workload-identity-directory/default`,
+          `arn:aws:bedrock-agentcore:${region}:${accountId}:workload-identity-directory/default/workload-identity/${agentName}-*`,
+        ],
+      })
+    );
+
+    // Bedrock モデル呼び出し権限
     this.runtime.addToRolePolicy(
       new iam.PolicyStatement({
         sid: 'BedrockModelInvocation',
@@ -84,13 +250,75 @@ export class BedrockAgentConstruct extends Construct {
           'bedrock:ApplyGuardrail',
         ],
         resources: [
-          // 全リージョンのFoundation Model
           'arn:aws:bedrock:*::foundation-model/*',
-          // 全リージョンのInference Profile
           'arn:aws:bedrock:*:*:inference-profile/*',
-          // アカウント固有のBedrockリソース
           `arn:aws:bedrock:${region}:${accountId}:*`,
         ],
+      })
+    );
+
+    // Marketplace 権限 (条件付き)
+    this.runtime.addToRolePolicy(
+      new iam.PolicyStatement({
+        sid: 'MarketplaceSubscribeOnFirstCall',
+        effect: iam.Effect.ALLOW,
+        actions: [
+          'aws-marketplace:ViewSubscriptions',
+          'aws-marketplace:Subscribe',
+        ],
+        resources: ['*'],
+        conditions: {
+          StringEquals: {
+            'aws:CalledViaLast': 'bedrock.amazonaws.com',
+          },
+        },
+      })
+    );
+
+    // Bedrock Agent Core Code Interpreter
+    this.runtime.addToRolePolicy(
+      new iam.PolicyStatement({
+        sid: 'BedrockAgentCoreCodeInterpreter',
+        effect: iam.Effect.ALLOW,
+        actions: [
+          'bedrock-agentcore:StartCodeInterpreterSession',
+          'bedrock-agentcore:InvokeCodeInterpreter',
+          'bedrock-agentcore:StopCodeInterpreterSession',
+          'bedrock-agentcore:GetCodeInterpreter',
+          'bedrock-agentcore:GetCodeInterpreterSession',
+          'bedrock-agentcore:ListCodeInterpreterSessions',
+        ],
+        resources: [
+          `arn:aws:bedrock-agentcore:${region}:aws:code-interpreter/aws.codeinterpreter.v1`,
+        ],
+      })
+    );
+
+    // Bedrock Agent Core Identity
+    this.runtime.addToRolePolicy(
+      new iam.PolicyStatement({
+        sid: 'BedrockAgentCoreIdentity',
+        effect: iam.Effect.ALLOW,
+        actions: [
+          'bedrock-agentcore:CreateWorkloadIdentity',
+          'bedrock-agentcore:GetWorkloadAccessTokenForUserId',
+        ],
+        resources: [
+          `arn:aws:bedrock-agentcore:${region}:${accountId}:workload-identity-directory/default`,
+          `arn:aws:bedrock-agentcore:${region}:${accountId}:workload-identity-directory/default/workload-identity/*`,
+        ],
+      })
+    );
+
+    // STS Web Identity Token
+    this.runtime.addToRolePolicy(
+      new iam.PolicyStatement({
+        sid: 'AwsJwtFederation',
+        effect: iam.Effect.ALLOW,
+        actions: [
+          'sts:GetWebIdentityToken',
+        ],
+        resources: ['*'],
       })
     );
 

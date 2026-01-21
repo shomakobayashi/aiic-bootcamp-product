@@ -1,0 +1,151 @@
+{
+  "agentName": "aws-operations-agent",
+  "agentDescription": "AWS Lambda、DynamoDB、API Gatewayを操作するエージェント",
+  "instruction": "You are an expert AWS Certified Solutions Architect. You can execute AWS Lambda functions, perform CRUD operations on DynamoDB tables, execute API Gateway endpoints, and query AWS Documentation for best practices.",
+  "tools": [
+    {
+      "name": "lambda_invoke",
+      "description": "AWS Lambda関数を実行します",
+      "parameters": {
+        "function_name": {
+          "type": "string",
+          "description": "Lambda関数名",
+          "required": true,
+        },
+        "payload": {
+          "type": "object",
+          "description": "実行ペイロード",
+          "required": true,
+        },
+        "invocation_type": {
+          "type": "string",
+          "description": "実行タイプ",
+          "required": false,
+          "default": "RequestResponse",
+        },
+      },
+    },
+    {
+      "name": "lambda_get_code",
+      "description": "Lambda関数のソースコードURLを取得します",
+      "parameters": {
+        "function_name": {
+          "type": "string",
+          "description": "Lambda関数名",
+          "required": true,
+        },
+      },
+    },
+    {
+      "name": "lambda_list",
+      "description": "Lambda関数の一覧を取得します",
+      "parameters": {},
+    },
+    {
+      "name": "dynamodb_create",
+      "description": "DynamoDBテーブルにアイテムを作成します",
+      "parameters": {
+        "table_name": {
+          "type": "string",
+          "description": "テーブル名",
+          "required": true,
+        },
+        "item": {
+          "type": "object",
+          "description": "作成するアイテム",
+          "required": true,
+        },
+      },
+    },
+    {
+      "name": "dynamodb_read",
+      "description": "DynamoDBテーブルからアイテムを取得します",
+      "parameters": {
+        "table_name": {
+          "type": "string",
+          "description": "テーブル名",
+          "required": true,
+        },
+        "key": {
+          "type": "object",
+          "description": "取得するアイテムのキー",
+          "required": true,
+        },
+      },
+    },
+    {
+      "name": "dynamodb_update",
+      "description": "DynamoDBテーブルのアイテムを更新します",
+      "parameters": {
+        "table_name": {
+          "type": "string",
+          "description": "テーブル名",
+          "required": true,
+        },
+        "key": {
+          "type": "object",
+          "description": "更新するアイテムのキー",
+          "required": true,
+        },
+        "updates": {
+          "type": "object",
+          "description": "更新内容",
+          "required": true,
+        },
+      },
+    },
+    {
+      "name": "dynamodb_query",
+      "description": "DynamoDBテーブルをクエリします",
+      "parameters": {
+        "table_name": {
+          "type": "string",
+          "description": "テーブル名",
+          "required": true,
+        },
+        "key_condition": {
+          "type": "string",
+          "description": "キー条件式",
+          "required": true,
+        },
+        "expr_attr_values": {
+          "type": "object",
+          "description": "式属性値",
+          "required": true,
+        },
+      },
+    },
+    {
+      "name": "api_execute",
+      "description": "API Gatewayエンドポイントを実行します",
+      "parameters": {
+        "api_url": {
+          "type": "string",
+          "description": "APIエンドポイントURL",
+          "required": true,
+        },
+        "method": {
+          "type": "string",
+          "description": "HTTPメソッド",
+          "required": false,
+          "default": "GET",
+        },
+        "headers": {
+          "type": "object",
+          "description": "リクエストヘッダー",
+          "required": false,
+        },
+        "params": {
+          "type": "object",
+          "description": "クエリパラメータ",
+          "required": false,
+        },
+        "body": {
+          "type": "object",
+          "description": "リクエストボディ",
+          "required": false,
+        },
+      },
+    },
+  ],
+}

@@ -47,8 +47,11 @@ export class AiicBootcampProductStack extends Stack {
       region: 'us-east-1',
     });
 
-    // エージェントに特定リソースへのアクセス権限を付与
-    bedrockAgent.grantDynamoDBAccess(dynamoDB.table.tableArn);
+    // エージェントに特定リソースへのアクセス権限を付与（全テーブル）
+    bedrockAgent.grantDynamoDBAccess(dynamoDB.productsTable.tableArn);
+    bedrockAgent.grantDynamoDBAccess(dynamoDB.cartsTable.tableArn);
+    bedrockAgent.grantDynamoDBAccess(dynamoDB.ordersTable.tableArn);
+    bedrockAgent.grantDynamoDBAccess(dynamoDB.usersTable.tableArn);
     bedrockAgent.grantLambdaInvoke(lambdaFunction.function.functionArn);
   }
 }

@@ -10,10 +10,9 @@ export class AiicBootcampProductStack extends Stack {
     super(scope, id, props);
 
     /**
-     * DynamoDB テーブルの作成
+     * DynamoDB テーブルの作成（ECサイト用）
      */
     const dynamoDB = new DynamoDBConstruct(this, 'DynamoDB', {
-      tableName: 'aiic-bootcamp-items',
       removalPolicy: RemovalPolicy.DESTROY, // 開発用設定（本番では変更してください）
     });
 
@@ -21,10 +20,13 @@ export class AiicBootcampProductStack extends Stack {
      * Lambda 関数の作成
      */
     const lambdaFunction = new LambdaConstruct(this, 'Lambda', {
-      table: dynamoDB.table,
-      functionName: 'aiic-bootcamp-api-handler',
+      productsTable: dynamoDB.productsTable,
+      cartsTable: dynamoDB.cartsTable,
+      ordersTable: dynamoDB.ordersTable,
+      usersTable: dynamoDB.usersTable,
+      functionName: 'aiic-bootcamp-ec-api-handler',
       timeout: Duration.seconds(30),
-      memorySize: 128,
+      memorySize: 256,
     });
 
     /**
@@ -32,8 +34,8 @@ export class AiicBootcampProductStack extends Stack {
      */
     new ApiGatewayConstruct(this, 'ApiGateway', {
       lambdaFunction: lambdaFunction.function,
-      apiName: 'AIIC Bootcamp API',
-      stageName: 'vv1',
+      apiName: 'AIIC Bootcamp EC API',
+      stageName: 'v1',
       enableCors: true,
     });
 

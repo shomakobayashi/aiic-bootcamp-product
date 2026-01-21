@@ -3,29 +3,95 @@ import { Table, AttributeType, BillingMode } from 'aws-cdk-lib/aws-dynamodb';
 import { Construct } from 'constructs';
 
 export interface DynamoDBConstructProps {
-  tableName: string;
   removalPolicy?: RemovalPolicy;
 }
 
 /**
- * DynamoDB の作成
+ * ECサイト用 DynamoDB テーブルの作成
  */
 export class DynamoDBConstruct extends Construct {
-  public readonly table: Table;
+  public readonly productsTable: Table;
+  public readonly cartsTable: Table;
+  public readonly ordersTable: Table;
+  public readonly usersTable: Table;
 
-  constructor(scope: Construct, id: string, props: DynamoDBConstructProps) {
+  constructor(scope: Construct, id: string, props?: DynamoDBConstructProps) {
     super(scope, id);
 
-    const table = new Table(this, 'Table', {
-      tableName: props.tableName,
+    const removalPolicy = props?.removalPolicy || RemovalPolicy.RETAIN;
+
+    // 商品テーブル
+    this.productsTable = new Table(this, 'ProductsTable', {
+      tableName: 'ec-products',
       partitionKey: {
-        name: 'id',
+        name: 'productId',
         type: AttributeType.STRING,
       },
       billingMode: BillingMode.PAY_PER_REQUEST,
-      removalPolicy: RemovalPolicy.RETAIN,
+      removalPolicy,
       pointInTimeRecovery: true,
     });
-    this.table = table;
+
+    // カートテーブル
+    this.cartsTable = new Table(this, 'CartsTable', {
+      tableName: 'ec-carts',
+      partitionKey: {
+        name: 'userId',
+        type: AttributeType.STRING,
+      },
+      sortKey: {
+        name: 'productId',
+        type: AttributeType.STRING,
+      },
+      billingMode: BillingMode.PAY_PER_REQUEST,
+      removalPolicy,
+      pointInTimeRecovery: true,
+    });
+
+    // 注文テーブル
+    this.ordersTable = new Table(this, 'OrdersTable', {
+      tableName: 'ec-orders',
+      partitionKey: {
+        name: 'orderId',
+        type: AttributeType.STRING,
+      },
+      billingMode: BillingMode.PAY_PER_REQUEST,
+      removalPolicy,
+      pointInTimeRecovery: true,
+    });
+
+    // GSI for user's orders
+    this.ordersTable.addGlobalSecondaryIndex({
+      indexName: 'UserOrdersIndex',
+      partitionKey: {
+        name: 'userId',
+        type: AttributeType.STRING,
+      },
+      sortKey: {
+        name: 'createdAt',
+        type: AttributeType.STRING,
+      },
+    });
+
+    // ユーザーテーブル
+    this.usersTable = new Table(this, 'UsersTable', {
+      tableName: 'ec-users',
+      partitionKey: {
+        name: 'userId',
+        type: AttributeType.STRING,
+      },
+      billingMode: BillingMode.PAY_PER_REQUEST,
+      removalPolicy,
+      pointInTimeRecovery: true,
+    });
+
+    // GSI for email lookup
+    this.usersTable.addGlobalSecondaryIndex({
+      indexName: 'EmailIndex',
+      partitionKey: {
+        name: 'email',
+        type: AttributeType.STRING,
+      },
+    });
   }
 }

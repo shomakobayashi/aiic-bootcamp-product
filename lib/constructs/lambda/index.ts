@@ -6,7 +6,10 @@ import * as path from 'path';
 import { Construct } from 'constructs';
 
 export interface LambdaConstructProps {
-  table: Table;
+  productsTable: Table;
+  cartsTable: Table;
+  ordersTable: Table;
+  usersTable: Table;
   functionName?: string;
   timeout?: Duration;
   memorySize?: number;
@@ -24,7 +27,10 @@ export class LambdaConstruct extends Construct {
       handler: 'handler',
       runtime: Runtime.NODEJS_22_X,
       environment: {
-        TABLE_NAME: props.table.tableName,
+        PRODUCTS_TABLE_NAME: props.productsTable.tableName,
+        CARTS_TABLE_NAME: props.cartsTable.tableName,
+        ORDERS_TABLE_NAME: props.ordersTable.tableName,
+        USERS_TABLE_NAME: props.usersTable.tableName,
         NODE_OPTIONS: '--enable-source-maps',
       },
       timeout: props.timeout || Duration.seconds(30),
@@ -43,7 +49,10 @@ export class LambdaConstruct extends Construct {
     });
 
     // DynamoDB へのアクセス権限を付与
-    props.table.grantReadWriteData(this.function);
+    props.productsTable.grantReadWriteData(this.function);
+    props.cartsTable.grantReadWriteData(this.function);
+    props.ordersTable.grantReadWriteData(this.function);
+    props.usersTable.grantReadWriteData(this.function);
 
     // CloudFormation出力
     new CfnOutput(this, 'FunctionName', {

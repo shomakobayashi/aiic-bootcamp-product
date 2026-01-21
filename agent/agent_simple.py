@@ -1,5 +1,4 @@
 import logging
-import sys
 import traceback
 
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
@@ -20,12 +19,6 @@ bedrock_model = BedrockModel(
     temperature=0.7,
     streaming=True,
 )
-
-
-def streaming_callback(**kwargs):
-    """ストリーミング出力用のコールバックハンドラー"""
-    if "data" in kwargs:
-        print(kwargs["data"], end="", flush=True)
 
 
 @tool
@@ -85,7 +78,7 @@ def api_execute(
 
 
 @app.entrypoint
-def run_agent(payload):
+async def run_agent(payload):
     try:
         user_input = payload.get("prompt")
         logger.info(f"User input: {user_input}")
@@ -105,13 +98,11 @@ def run_agent(payload):
             tools=custom_tools,
             model=bedrock_model,
             system_prompt="Please respond flexibly according to the user's content.",
-            callback_handler=streaming_callback,
         )
 
-        response = agent(user_input)
-        print()  # ストリーミング出力後に改行を追加
-        logger.info(f"Agent response: {response}")
-        return response.message["content"][0]["text"]
+        async for event in agent.stream_async(user_input):
+            if "data" in event:
+                yield event["data"]
     except Exception as e:
         error_msg = f"Error in run_agent: {str(e)}"
         logger.error(error_msg)

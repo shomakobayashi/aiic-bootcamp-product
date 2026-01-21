@@ -21,6 +21,7 @@ const PRODUCTS_TABLE = process.env.PRODUCTS_TABLE_NAME || '';
 const CARTS_TABLE = process.env.CARTS_TABLE_NAME || '';
 const ORDERS_TABLE = process.env.ORDERS_TABLE_NAME || '';
 const USERS_TABLE = process.env.USERS_TABLE_NAME || '';
+const REVIEWS_TABLE = process.env.REVIEWS_TABLE_NAME || '';
 
 // ========================================
 // ヘルスチェック
@@ -34,6 +35,9 @@ app.get('/', (c) => {
       carts: '/carts',
       orders: '/orders',
       users: '/users',
+      reviews: '/reviews',
+      search: '/products/search',
+      recommendations: '/products/recommendations',
     }
   });
 });
@@ -89,8 +93,12 @@ app.post('/products', async (c) => {
       description: body.description || '',
       price: body.price,
       stock: body.stock || 0,
-      category: body.category || '',
+      category: body.category || 'General',
       imageUrl: body.imageUrl || '',
+      averageRating: 0,
+      reviewCount: 0,
+      tags: body.tags || [],
+      brand: body.brand || '',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -582,5 +590,383 @@ app.delete('/users/:userId', async (c) => {
     return c.json({ error: 'Failed to delete user' }, 500);
   }
 });
+
+// ========================================
+// 商品検索・フィルタリング (Amazon風)
+// ========================================
+
+// 商品検索（カテゴリ、価格帯、評価でフィルタリング）
+app.get('/products/search', async (c) => {
+  try {
+    const category = c.req.query('category');
+    const minPrice = c.req.query('minPrice');
+    const maxPrice = c.req.query('maxPrice');
+    const minRating = c.req.query('minRating');
+    const sortBy = c.req.query('sortBy') || 'createdAt'; // createdAt, price, rating
+    const keyword = c.req.query('keyword');
+
+    let result;
+
+    if (category) {
+      // カテゴリでクエリ
+      result = await docClient.send(
+        new QueryCommand({
+          TableName: PRODUCTS_TABLE,
+          IndexName: 'CategoryIndex',
+          KeyConditionExpression: 'category = :category',
+          ExpressionAttributeValues: {
+            ':category': category,
+          },
+          ScanIndexForward: false, // 評価の高い順
+        })
+      );
+    } else {
+      // 全件スキャン
+      result = await docClient.send(
+        new ScanCommand({
+          TableName: PRODUCTS_TABLE,
+        })
+      );
+    }
+
+    let products = result.Items || [];
+
+    // キーワード検索
+    if (keyword) {
+      const lowerKeyword = keyword.toLowerCase();
+      products = products.filter((p: any) =>
+        p.name?.toLowerCase().includes(lowerKeyword) ||
+        p.description?.toLowerCase().includes(lowerKeyword) ||
+        p.brand?.toLowerCase().includes(lowerKeyword) ||
+        (p.tags && p.tags.some((tag: string) => tag.toLowerCase().includes(lowerKeyword)))
+      );
+    }
+
+    // 価格フィルター
+    if (minPrice) {
+      products = products.filter((p: any) => p.price >= parseFloat(minPrice));
+    }
+    if (maxPrice) {
+      products = products.filter((p: any) => p.price <= parseFloat(maxPrice));
+    }
+
+    // 評価フィルター
+    if (minRating) {
+      products = products.filter((p: any) => (p.averageRating || 0) >= parseFloat(minRating));
+    }
+
+    // ソート
+    if (sortBy === 'price') {
+      products.sort((a: any, b: any) => a.price - b.price);
+    } else if (sortBy === 'rating') {
+      products.sort((a: any, b: any) => (b.averageRating || 0) - (a.averageRating || 0));
+    } else if (sortBy === 'createdAt') {
+      products.sort((a: any, b: any) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+    }
+
+    return c.json({
+      products,
+      total: products.length,
+      filters: {
+        category,
+        minPrice,
+        maxPrice,
+        minRating,
+        sortBy,
+        keyword,
+      },
+    });
+  } catch (error) {
+    console.error('Error searching products:', error);
+    return c.json({ error: 'Failed to search products' }, 500);
+  }
+});
+
+// おすすめ商品（評価の高い商品、同じカテゴリの商品）
+app.get('/products/recommendations/:productId', async (c) => {
+  const productId = c.req.param('productId');
+  try {
+    // まず対象商品を取得
+    const productResult = await docClient.send(
+      new GetCommand({
+        TableName: PRODUCTS_TABLE,
+        Key: { productId },
+      })
+    );
+
+    if (!productResult.Item) {
+      return c.json({ error: 'Product not found' }, 404);
+    }
+
+    const product = productResult.Item;
+
+    // 同じカテゴリの商品を取得
+    const result = await docClient.send(
+      new QueryCommand({
+        TableName: PRODUCTS_TABLE,
+        IndexName: 'CategoryIndex',
+        KeyConditionExpression: 'category = :category',
+        ExpressionAttributeValues: {
+          ':category': product.category,
+        },
+        ScanIndexForward: false,
+        Limit: 10,
+      })
+    );
+
+    // 自分自身は除外
+    const recommendations = (result.Items || []).filter((item: any) => item.productId !== productId);
+
+    return c.json({
+      recommendations: recommendations.slice(0, 5),
+      basedOn: {
+        productId,
+        category: product.category,
+      },
+    });
+  } catch (error) {
+    console.error('Error getting recommendations:', error);
+    return c.json({ error: 'Failed to get recommendations' }, 500);
+  }
+});
+
+// ========================================
+// レビュー管理 (Amazon風)
+// ========================================
+
+// 商品のレビュー一覧取得
+app.get('/reviews/product/:productId', async (c) => {
+  const productId = c.req.param('productId');
+  try {
+    const result = await docClient.send(
+      new QueryCommand({
+        TableName: REVIEWS_TABLE,
+        KeyConditionExpression: 'productId = :productId',
+        ExpressionAttributeValues: {
+          ':productId': productId,
+        },
+        ScanIndexForward: false, // 新しい順
+      })
+    );
+
+    return c.json({ reviews: result.Items || [] });
+  } catch (error) {
+    console.error('Error fetching reviews:', error);
+    return c.json({ error: 'Failed to fetch reviews' }, 500);
+  }
+});
+
+// ユーザーのレビュー一覧取得
+app.get('/reviews/user/:userId', async (c) => {
+  const userId = c.req.param('userId');
+  try {
+    const result = await docClient.send(
+      new QueryCommand({
+        TableName: REVIEWS_TABLE,
+        IndexName: 'UserReviewsIndex',
+        KeyConditionExpression: 'userId = :userId',
+        ExpressionAttributeValues: {
+          ':userId': userId,
+        },
+        ScanIndexForward: false,
+      })
+    );
+
+    return c.json({ reviews: result.Items || [] });
+  } catch (error) {
+    console.error('Error fetching user reviews:', error);
+    return c.json({ error: 'Failed to fetch user reviews' }, 500);
+  }
+});
+
+// レビュー投稿
+app.post('/reviews', async (c) => {
+  try {
+    const body = await c.req.json();
+    const reviewId = crypto.randomUUID();
+    const review = {
+      productId: body.productId,
+      reviewId,
+      userId: body.userId,
+      rating: body.rating, // 1-5
+      title: body.title,
+      comment: body.comment,
+      verified: body.verified || false, // 購入済みかどうか
+      helpful: 0, // 役に立った数
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    await docClient.send(
+      new PutCommand({
+        TableName: REVIEWS_TABLE,
+        Item: review,
+      })
+    );
+
+    // 商品の平均評価を更新
+    await updateProductRating(body.productId);
+
+    return c.json({ review }, 201);
+  } catch (error) {
+    console.error('Error creating review:', error);
+    return c.json({ error: 'Failed to create review' }, 500);
+  }
+});
+
+// レビュー更新
+app.put('/reviews/:productId/:reviewId', async (c) => {
+  const productId = c.req.param('productId');
+  const reviewId = c.req.param('reviewId');
+  try {
+    const body = await c.req.json();
+
+    const updateExpression: string[] = [];
+    const expressionAttributeNames: Record<string, string> = {};
+    const expressionAttributeValues: Record<string, any> = {};
+
+    if (body.rating !== undefined) {
+      updateExpression.push('#rating = :rating');
+      expressionAttributeNames['#rating'] = 'rating';
+      expressionAttributeValues[':rating'] = body.rating;
+    }
+    if (body.title !== undefined) {
+      updateExpression.push('#title = :title');
+      expressionAttributeNames['#title'] = 'title';
+      expressionAttributeValues[':title'] = body.title;
+    }
+    if (body.comment !== undefined) {
+      updateExpression.push('#comment = :comment');
+      expressionAttributeNames['#comment'] = 'comment';
+      expressionAttributeValues[':comment'] = body.comment;
+    }
+
+    updateExpression.push('#updatedAt = :updatedAt');
+    expressionAttributeNames['#updatedAt'] = 'updatedAt';
+    expressionAttributeValues[':updatedAt'] = new Date().toISOString();
+
+    await docClient.send(
+      new UpdateCommand({
+        TableName: REVIEWS_TABLE,
+        Key: { productId, reviewId },
+        UpdateExpression: `SET ${updateExpression.join(', ')}`,
+        ExpressionAttributeNames: expressionAttributeNames,
+        ExpressionAttributeValues: expressionAttributeValues,
+      })
+    );
+
+    // 商品の平均評価を更新
+    await updateProductRating(productId);
+
+    return c.json({ message: 'Review updated successfully' });
+  } catch (error) {
+    console.error('Error updating review:', error);
+    return c.json({ error: 'Failed to update review' }, 500);
+  }
+});
+
+// レビュー削除
+app.delete('/reviews/:productId/:reviewId', async (c) => {
+  const productId = c.req.param('productId');
+  const reviewId = c.req.param('reviewId');
+  try {
+    await docClient.send(
+      new DeleteCommand({
+        TableName: REVIEWS_TABLE,
+        Key: { productId, reviewId },
+      })
+    );
+
+    // 商品の平均評価を更新
+    await updateProductRating(productId);
+
+    return c.json({ message: 'Review deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting review:', error);
+    return c.json({ error: 'Failed to delete review' }, 500);
+  }
+});
+
+// レビューに「役に立った」を追加
+app.post('/reviews/:productId/:reviewId/helpful', async (c) => {
+  const productId = c.req.param('productId');
+  const reviewId = c.req.param('reviewId');
+  try {
+    await docClient.send(
+      new UpdateCommand({
+        TableName: REVIEWS_TABLE,
+        Key: { productId, reviewId },
+        UpdateExpression: 'SET helpful = if_not_exists(helpful, :zero) + :inc',
+        ExpressionAttributeValues: {
+          ':zero': 0,
+          ':inc': 1,
+        },
+      })
+    );
+
+    return c.json({ message: 'Marked as helpful' });
+  } catch (error) {
+    console.error('Error marking review as helpful:', error);
+    return c.json({ error: 'Failed to mark as helpful' }, 500);
+  }
+});
+
+// ========================================
+// ヘルパー関数
+// ========================================
+
+// 商品の平均評価を更新
+async function updateProductRating(productId: string) {
+  try {
+    // 全レビューを取得
+    const result = await docClient.send(
+      new QueryCommand({
+        TableName: REVIEWS_TABLE,
+        KeyConditionExpression: 'productId = :productId',
+        ExpressionAttributeValues: {
+          ':productId': productId,
+        },
+      })
+    );
+
+    const reviews = result.Items || [];
+    const reviewCount = reviews.length;
+
+    if (reviewCount === 0) {
+      // レビューがない場合
+      await docClient.send(
+        new UpdateCommand({
+          TableName: PRODUCTS_TABLE,
+          Key: { productId },
+          UpdateExpression: 'SET averageRating = :zero, reviewCount = :zero',
+          ExpressionAttributeValues: {
+            ':zero': 0,
+          },
+        })
+      );
+    } else {
+      // 平均評価を計算
+      const totalRating = reviews.reduce((sum: number, review: any) => sum + (review.rating || 0), 0);
+      const averageRating = Math.round((totalRating / reviewCount) * 10) / 10; // 小数第1位まで
+
+      await docClient.send(
+        new UpdateCommand({
+          TableName: PRODUCTS_TABLE,
+          Key: { productId },
+          UpdateExpression: 'SET averageRating = :avg, reviewCount = :count',
+          ExpressionAttributeValues: {
+            ':avg': averageRating,
+            ':count': reviewCount,
+          },
+        })
+      );
+    }
+  } catch (error) {
+    console.error('Error updating product rating:', error);
+    throw error;
+  }
+}
 
 export const handler = handle(app);

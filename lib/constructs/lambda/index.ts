@@ -10,6 +10,7 @@ export interface LambdaConstructProps {
   cartsTable: Table;
   ordersTable: Table;
   usersTable: Table;
+  reviewsTable: Table;
   functionName?: string;
   timeout?: Duration;
   memorySize?: number;
@@ -31,6 +32,7 @@ export class LambdaConstruct extends Construct {
         CARTS_TABLE_NAME: props.cartsTable.tableName,
         ORDERS_TABLE_NAME: props.ordersTable.tableName,
         USERS_TABLE_NAME: props.usersTable.tableName,
+        REVIEWS_TABLE_NAME: props.reviewsTable.tableName,
         NODE_OPTIONS: '--enable-source-maps',
       },
       timeout: props.timeout || Duration.seconds(30),
@@ -53,6 +55,7 @@ export class LambdaConstruct extends Construct {
     props.cartsTable.grantReadWriteData(this.function);
     props.ordersTable.grantReadWriteData(this.function);
     props.usersTable.grantReadWriteData(this.function);
+    props.reviewsTable.grantReadWriteData(this.function);
 
     // CloudFormation出力
     new CfnOutput(this, 'FunctionName', {

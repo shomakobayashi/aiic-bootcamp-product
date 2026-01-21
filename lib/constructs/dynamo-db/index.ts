@@ -14,6 +14,7 @@ export class DynamoDBConstruct extends Construct {
   public readonly cartsTable: Table;
   public readonly ordersTable: Table;
   public readonly usersTable: Table;
+  public readonly reviewsTable: Table;
 
   constructor(scope: Construct, id: string, props?: DynamoDBConstructProps) {
     super(scope, id);
@@ -30,6 +31,19 @@ export class DynamoDBConstruct extends Construct {
       billingMode: BillingMode.PAY_PER_REQUEST,
       removalPolicy,
       pointInTimeRecovery: true,
+    });
+
+    // GSI for category search
+    this.productsTable.addGlobalSecondaryIndex({
+      indexName: 'CategoryIndex',
+      partitionKey: {
+        name: 'category',
+        type: AttributeType.STRING,
+      },
+      sortKey: {
+        name: 'averageRating',
+        type: AttributeType.NUMBER,
+      },
     });
 
     // カートテーブル
@@ -90,6 +104,35 @@ export class DynamoDBConstruct extends Construct {
       indexName: 'EmailIndex',
       partitionKey: {
         name: 'email',
+        type: AttributeType.STRING,
+      },
+    });
+
+    // レビューテーブル
+    this.reviewsTable = new Table(this, 'ReviewsTable', {
+      tableName: 'ec-reviews',
+      partitionKey: {
+        name: 'productId',
+        type: AttributeType.STRING,
+      },
+      sortKey: {
+        name: 'reviewId',
+        type: AttributeType.STRING,
+      },
+      billingMode: BillingMode.PAY_PER_REQUEST,
+      removalPolicy,
+      pointInTimeRecovery: true,
+    });
+
+    // GSI for user's reviews
+    this.reviewsTable.addGlobalSecondaryIndex({
+      indexName: 'UserReviewsIndex',
+      partitionKey: {
+        name: 'userId',
+        type: AttributeType.STRING,
+      },
+      sortKey: {
+        name: 'createdAt',
         type: AttributeType.STRING,
       },
     });

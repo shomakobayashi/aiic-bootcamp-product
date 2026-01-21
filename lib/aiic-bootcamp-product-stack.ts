@@ -24,6 +24,7 @@ export class AiicBootcampProductStack extends Stack {
       cartsTable: dynamoDB.cartsTable,
       ordersTable: dynamoDB.ordersTable,
       usersTable: dynamoDB.usersTable,
+      reviewsTable: dynamoDB.reviewsTable,
       functionName: 'aiic-bootcamp-ec-api-handler',
       timeout: Duration.seconds(30),
       memorySize: 256,
@@ -53,6 +54,7 @@ export class AiicBootcampProductStack extends Stack {
     bedrockAgent.grantDynamoDBAccess(dynamoDB.cartsTable.tableArn);
     bedrockAgent.grantDynamoDBAccess(dynamoDB.ordersTable.tableArn);
     bedrockAgent.grantDynamoDBAccess(dynamoDB.usersTable.tableArn);
+    bedrockAgent.grantDynamoDBAccess(dynamoDB.reviewsTable.tableArn);
     bedrockAgent.grantLambdaInvoke(lambdaFunction.function.functionArn);
   }
 }

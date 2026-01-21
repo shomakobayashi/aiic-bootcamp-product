@@ -82,7 +82,9 @@ export class BedrockAgentConstruct extends Construct {
           'bedrock:InvokeModelWithResponseStream',
         ],
         resources: [
-          `arn:aws:bedrock:${region}::foundation-model/${modelId}`,
+          // Cross-Region Inference Profile用
+          `arn:aws:bedrock:${region}:*:inference-profile/${modelId}`,
+          // 通常のFoundation Model用（フォールバック）
           `arn:aws:bedrock:${region}::foundation-model/*`,
         ],
       })
